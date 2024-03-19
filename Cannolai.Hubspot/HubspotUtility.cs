@@ -1,13 +1,6 @@
 ﻿using Cannolai.Hubspot.Entity;
 using Cannolai.Hubspot.Utility;
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
+using System.Net;
 
 namespace Cannolai.Hubspot
 {
@@ -20,7 +13,7 @@ namespace Cannolai.Hubspot
             _response = new Response();
         }
 
-        public async Task<Response> AddContactColumn(ContactColumn contactColumn, List<string> accessTokens)
+        public async Task<Response> AddContactColumnAsync(ContactColumn contactColumn, List<string> accessTokens)
         {
             try
             {
@@ -29,21 +22,31 @@ namespace Cannolai.Hubspot
                     string groupName = contactColumn?.groupName?.Trim();
                     var httpClientService = new HttpClientService();
                     var getGroupUrl = $"https://api.hubapi.com/properties/v1/contacts/groups/named/{groupName.ToLower().Replace(" ", "_")}";
-                    var getGroupResult = await httpClientService.GetAsync(getGroupUrl, token);
-                    if (!getGroupResult.IsSuccess)
+                    var (getGroupResult, getGrpStatusCode) = await httpClientService.GetAsync(getGroupUrl, token);
+                    if (getGrpStatusCode != null
+                        && getGrpStatusCode != HttpStatusCode.Unauthorized)
                     {
-                        var addGroupUrl = $"https://api.hubapi.com/properties/v1/contacts/groups";
-                        var newGroup = new Group()
+                        if (!getGroupResult.IsSuccess)
                         {
-                            name = groupName.ToLower().Replace(" ", "_"),
-                            displayName = groupName,
-                        };
-                        var addGroupResult = await httpClientService.PostAsync(addGroupUrl, token, newGroup);
-                        if (!addGroupResult.IsSuccess)
-                        {
-                            _response?.ResponseModel?.Add(addGroupResult);
-                            break;
+                            var addGroupUrl = $"https://api.hubapi.com/properties/v1/contacts/groups";
+                            var newGroup = new Group()
+                            {
+                                name = groupName.ToLower().Replace(" ", "_"),
+                                displayName = groupName,
+                            };
+                            var (addGroupResult, addGrpStatusCode) = await httpClientService.PostAsync(addGroupUrl, token, newGroup);
+                            if (!addGroupResult.IsSuccess && addGrpStatusCode != null
+                                && addGrpStatusCode != HttpStatusCode.Unauthorized)
+                            {
+                                _response?.ResponseModel?.Add(addGroupResult);
+                                break;
+                            }
                         }
+                    }
+                    else
+                    {
+                        _response?.ResponseModel?.Add(getGroupResult);
+                        return _response;
                     }
 
                     contactColumn.name = contactColumn.name?.ToLower()?.Trim().Replace(" ", "_");
@@ -52,18 +55,24 @@ namespace Cannolai.Hubspot
                     contactColumn.groupName = groupName;
 
                     var addContactPropertyUrl = "https://api.hubapi.com/crm/v3/properties/contacts";
-                    var addColumnResult = await httpClientService.PostAsync(addContactPropertyUrl, token, contactColumn);
+                    var (addColumnResult, addColumnResultStatusCode) = await httpClientService.PostAsync(addContactPropertyUrl, token, contactColumn);
                     _response?.ResponseModel?.Add(addColumnResult);
                 }
                 return _response;
             }
             catch (Exception ex)
             {
+                _response?.ResponseModel?.Add(new ResponseModel()
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Result = ex?.InnerException?.ToString()
+                });
                 return _response;
             }
         }
 
-        public async Task<Response> AddCompanyColumn(CompanyColumn companyColumn, List<string> accessTokens)
+        public async Task<Response> AddCompanyColumnAsync(CompanyColumn companyColumn, List<string> accessTokens)
         {
             try
             {
@@ -72,21 +81,30 @@ namespace Cannolai.Hubspot
                     string groupName = companyColumn?.groupName?.Trim();
                     var httpClientService = new HttpClientService();
                     var getGroupUrl = $"https://api.hubapi.com/properties/v1/companies/groups/named/{groupName.ToLower().Replace(" ", "_")}";
-                    var getGroupResult = await httpClientService.GetAsync(getGroupUrl, token);
-                    if (!getGroupResult.IsSuccess)
+                    var (getGroupResult, getGrpResulStatusCode) = await httpClientService.GetAsync(getGroupUrl, token);
+
+                    if (getGrpResulStatusCode != null && getGrpResulStatusCode != HttpStatusCode.Unauthorized)
                     {
-                        var addGroupUrl = $"https://api.hubapi.com/properties/v1/companies/groups";
-                        var newGroup = new Group()
+                        if (!getGroupResult.IsSuccess)
                         {
-                            name = groupName.ToLower().Replace(" ", "_"),
-                            displayName = groupName,
-                        };
-                        var addGroupResult = await httpClientService.PostAsync(addGroupUrl, token, newGroup);
-                        if (!addGroupResult.IsSuccess)
-                        {
-                            _response?.ResponseModel?.Add(addGroupResult);
-                            break;
+                            var addGroupUrl = $"https://api.hubapi.com/properties/v1/companies/groups";
+                            var newGroup = new Group()
+                            {
+                                name = groupName.ToLower().Replace(" ", "_"),
+                                displayName = groupName,
+                            };
+                            var (addGroupResult, addGrpStatusCode) = await httpClientService.PostAsync(addGroupUrl, token, newGroup);
+                            if (!addGroupResult.IsSuccess)
+                            {
+                                _response?.ResponseModel?.Add(addGroupResult);
+                                break;
+                            }
                         }
+                    }
+                    else
+                    {
+                        _response?.ResponseModel?.Add(getGroupResult);
+                        return _response;
                     }
 
                     companyColumn.name = companyColumn.name?.ToLower()?.Trim().Replace(" ", "_");
@@ -95,13 +113,19 @@ namespace Cannolai.Hubspot
                     companyColumn.groupName = groupName;
 
                     var addCompanyPropertyUrl = "https://api.hubapi.com/properties/v1/companies/properties";
-                    var addColumnResult = await httpClientService.PostAsync(addCompanyPropertyUrl, token, companyColumn);
+                    var (addColumnResult, addColumnResultStatusCode) = await httpClientService.PostAsync(addCompanyPropertyUrl, token, companyColumn);
                     _response?.ResponseModel?.Add(addColumnResult);
                 }
                 return _response;
             }
             catch (Exception ex)
             {
+                _response?.ResponseModel?.Add(new ResponseModel()
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Result = ex?.InnerException?.ToString()
+                });
                 return _response;
             }
         }
