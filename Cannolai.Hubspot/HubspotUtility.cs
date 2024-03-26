@@ -1,17 +1,23 @@
 ﻿using Cannolai.Hubspot.Entity;
 using Cannolai.Hubspot.Utility;
 using System.Net;
+using System.Text.Json;
+using System.Xml;
 
 namespace Cannolai.Hubspot
 {
     public class HubspotUtility
     {
         public Response _response;
+        public HttpClientService httpClientService;
 
         public HubspotUtility()
         {
             _response = new Response();
+            httpClientService  = new HttpClientService();
         }
+
+        #region Contact methods
 
         public async Task<Response> AddContactColumnAsync(ContactColumn contactColumn, List<string> accessTokens)
         {
@@ -20,7 +26,7 @@ namespace Cannolai.Hubspot
                 foreach (var token in accessTokens)
                 {
                     string groupName = contactColumn?.groupName?.Trim();
-                    var httpClientService = new HttpClientService();
+                    //var httpClientService = new HttpClientService();
                     var getGroupUrl = $"https://api.hubapi.com/properties/v1/contacts/groups/named/{groupName.ToLower().Replace(" ", "_")}";
                     var (getGroupResult, getGrpStatusCode) = await httpClientService.GetAsync(getGroupUrl, token);
                     if (getGrpStatusCode != null
@@ -72,6 +78,69 @@ namespace Cannolai.Hubspot
             }
         }
 
+        public async Task<Response?> GetContactByIdAsync(string hsContactId, string token)
+        {
+            try
+            {
+                var getContactUrl = $"https://api.hubapi.com/crm/v3/objects/contacts/{hsContactId}";
+                var (getContactResult, getContactStatusCode) = await httpClientService.GetAsync(getContactUrl, token);
+
+                _response?.ResponseModel?.Add(getContactResult);
+                return _response;
+            }
+            catch (Exception ex)
+            {
+                _response?.ResponseModel?.Add(new ResponseModel()
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Result = ex?.InnerException?.ToString()
+                });
+                return _response;
+            }
+        }
+
+        public async Task<Response?> SaveContact(ContactDTO contact, string token)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(contact.HsContactId))
+                {
+                    var propertiesObj = new
+                    {
+                        properties = contact?.Properties?.ToDictionary(p => p.Name, p => p.Value)
+                    };
+                    var updateContactUrl = $"https://api.hubapi.com/crm/v3/objects/contacts/{contact?.HsContactId}";
+                    var (updateContactResult, updateContactStatusCode) = await httpClientService.PatchAsync(updateContactUrl, token, propertiesObj);
+                    _response?.ResponseModel?.Add(updateContactResult);
+                    return _response;
+                }
+                else
+                {
+                    var propertiesObj = new
+                    {
+                        properties = contact?.Properties?.ToDictionary(p => p.Name, p => p.Value)
+                    };
+                    var addContactUrl = $"https://api.hubapi.com/crm/v3/objects/contacts";
+                    var (addContactResult, addContactStatusCode) = await httpClientService.PostAsync(addContactUrl, token, propertiesObj);
+                    _response?.ResponseModel?.Add(addContactResult);
+                    return _response;
+                }
+            }
+            catch (Exception ex)
+            {
+                _response?.ResponseModel?.Add(new ResponseModel()
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Result = ex?.InnerException?.ToString()
+                });
+                return _response;
+            }
+        }
+        #endregion
+
+        #region Company methods
         public async Task<Response> AddCompanyColumnAsync(CompanyColumn companyColumn, List<string> accessTokens)
         {
             try
@@ -129,5 +198,68 @@ namespace Cannolai.Hubspot
                 return _response;
             }
         }
+
+        public async Task<Response?> GetCompanyByIdAsync(string hsCompanyId, string token)
+        {
+            try
+            {
+                var getCompanyUrl = $"https://api.hubapi.com/crm/v3/objects/companies/{hsCompanyId}";
+                var (getCompanyResult, getCompanyStatusCode) = await httpClientService.GetAsync(getCompanyUrl, token);
+
+                _response?.ResponseModel?.Add(getCompanyResult);
+                return _response;
+            }
+            catch (Exception ex)
+            {
+                _response?.ResponseModel?.Add(new ResponseModel()
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Result = ex?.InnerException?.ToString()
+                });
+                return _response;
+            }
+        }
+
+        public async Task<Response?> SaveCompany(CompanyDTO company, string token)
+        {
+            try
+            {
+                if(!string.IsNullOrEmpty(company.HsCompanyId))
+                {
+                    var propertiesObj = new
+                    {
+                        properties = company?.Properties?.ToDictionary(p => p.Name, p => p.Value)
+                    };
+                    var updateCompanyUrl = $"https://api.hubapi.com/crm/v3/objects/companies/{company?.HsCompanyId}";
+                    var (updateCompanyResult, updateCompanyStatusCode) = await httpClientService.PatchAsync(updateCompanyUrl, token, propertiesObj);
+                    _response?.ResponseModel?.Add(updateCompanyResult);
+                    return _response;
+                }
+                else
+                {
+                    var propertiesObj = new
+                    {
+                        properties = company?.Properties?
+                        .ToDictionary(p => p.Name, p => p.Value)
+                    };
+                    var addCompanyUrl = $"https://api.hubapi.com/crm/v3/objects/companies";
+                    var (addCompanyResult, addCompanyStatusCode) = await httpClientService.PostAsync(addCompanyUrl, token, propertiesObj);
+                    _response?.ResponseModel?.Add(addCompanyResult);
+                    return _response;
+                }
+            }
+            catch(Exception ex) 
+            {
+                _response?.ResponseModel?.Add(new ResponseModel()
+                {
+                    IsSuccess = false,
+                    Message = ex.Message,
+                    Result = ex?.InnerException?.ToString()
+                });
+                return _response;
+            }
+        }
+        #endregion
     }
 }

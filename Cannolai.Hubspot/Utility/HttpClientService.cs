@@ -35,6 +35,22 @@ namespace Cannolai.Hubspot.Utility
             }
         }
 
+        public async Task<(ResponseModel, HttpStatusCode?)> PatchAsync<T>(string url, string accessToken, T content)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+                var jsonContent = JsonSerializer.Serialize(content);
+                var request = new HttpRequestMessage(HttpMethod.Patch, url);
+                request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                var response = await httpClient.SendAsync(request);
+
+                return await ProcessResponse(response, accessToken);
+            }
+        }
+
         private async Task<(ResponseModel, HttpStatusCode?)> ProcessResponse(HttpResponseMessage response, string accessToken = null)
         {
             var responseModel = new ResponseModel();
