@@ -100,7 +100,7 @@ namespace Cannolai.Hubspot
             }
         }
 
-        public async Task<Response?> SaveContact(ContactDTO contact, string token)
+        public async Task<Response?> SaveContactAsync(ContactDTO contact, string token)
         {
             try
             {
@@ -221,7 +221,7 @@ namespace Cannolai.Hubspot
             }
         }
 
-        public async Task<Response?> SaveCompany(CompanyDTO company, string token)
+        public async Task<Response?> SaveCompanyAsync(CompanyDTO company, string token)
         {
             try
             {
